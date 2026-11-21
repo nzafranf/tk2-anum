@@ -24,6 +24,12 @@ VARIANT = "PR+"
 LABEL = {"binary": "Binary search", "armijo": "Armijo"}
 
 
+def sci(v: float) -> str:
+    r"""Notasi ilmiah LaTeX, mis. 4.83\times10^{-18}."""
+    m, e = f"{v:.2e}".split("e")
+    return m + r"\times10^{" + str(int(e)) + "}"
+
+
 def main() -> None:
     (BASE / "results").mkdir(exist_ok=True)
     (BASE / "report" / "generated").mkdir(parents=True, exist_ok=True)
@@ -47,7 +53,7 @@ def main() -> None:
                     w.writerow([u, b, key, r.iters, r.n_f, r.n_g, *r.x, r.f, r.gnorm,
                                 r.dist_to_opt, r.converged])
     tex = "".join(
-        f"{u} & {m} & {it} & {nf} & {ng} & ${f:.2e}$ & ${gn:.2e}$\\\\\n"
+        f"{u} & {m} & {it} & {nf} & {ng} & ${sci(f)}$ & ${sci(gn)}$\\\\\n"
         for u, m, it, nf, ng, f, gn, _ in rows)
     (BASE / "report" / "generated" / "linesearch_table.tex").write_text(tex, encoding="utf-8")
     for row in rows:
