@@ -1,0 +1,52 @@
+\documentclass[12pt,a4paper]{article}
+\input{../../common/preamble.tex}
+\begin{document}
+
+% ---- Judul (1 baris, tidak dinomori) ----
+\begin{center}
+{\Large\bfseries Soal 1: Optimisasi Fungsi Rosenbrock dengan CGM dan Quasi-Newton}\par\medskip
+Kelompok A9 -- TK 2 Analisis Numerik
+\end{center}
+
+% ---- Rangkuman (~1/2 halaman, tidak dinomori). Ditulis TERAKHIR. ----
+\section*{Rangkuman}
+% TODO: masalah, metode (CGM, quasi-Newton, pencarian langkah), hasil utama (iterasi, evaluasi, akurasi), kesimpulan.
+
+\setcounter{tocdepth}{1}
+\tableofcontents
+\clearpage
+
+% ---- Bagian bernomor ----
+\section{Pendahuluan}
+% TODO (ditulis terakhir): deskripsi masalah, tujuan, cara studi dilakukan.
+
+\section{Metode Pencarian Langkah}\label{sec:linesearch}
+% Tugas (i): binary search vs Armijo; Tabel hasil uji; pilihan metode + alasan.
+% Pseudocode (Kode 2.1, 2.2) -- beri caption + penjelasan di teks.
+
+\section{Varian Algoritma}\label{sec:varian}
+% Tugas (ii): dua rumus beta_k untuk CGM, dua rumus pembaruan untuk quasi-Newton.
+
+\section{Perbandingan Hasil}\label{sec:hasil}
+% Tugas (iii): tabel 8 baris (uji x algoritma x varian), jarak ke x* = (1,1).
+
+\section{Visualisasi}\label{sec:visual}
+% Tugas (iv): lintasan pada kontur f (skala log) + grafik log ||grad f|| vs k. Jelaskan cara menilai kesetaraan akurasi.
+
+\section{Analisis}\label{sec:analisis}
+% Tugas (v): jawab 4 pertanyaan secara singkat.
+
+\section{Kesimpulan}
+% TODO: 1--2 paragraf.
+
+\begin{thebibliography}{9}
+\renewcommand{\refname}{Referensi}
+\bibitem{nocedal} J. Nocedal dan S. J. Wright, \emph{Numerical Optimization}, edisi ke-2. Springer, 2006.
+% TODO: tambah referensi yang benar-benar dipakai (bukan slide kuliah).
+\end{thebibliography}
+
+\appendix
+\section{Lampiran}
+% Kode program (bukan pseudocode), tabel rinci. Contoh:
+% \lstinputlisting[caption={Implementasi CGM.},label={code:cgm}]{../code/cgm.py}
+\end{document}

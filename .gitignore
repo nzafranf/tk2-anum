@@ -1,0 +1,20 @@
+# tanda tangan anggota (jangan di-commit)
+ignore/*
+!ignore/.gitkeep
+
+# hasil build
+build/
+submission/
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/

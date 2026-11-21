@@ -1,0 +1,35 @@
+\documentclass[12pt,a4paper]{article}
+\input{preamble.tex}
+% Tanda tangan: taruh di ignore/ (tidak ikut git). Bila berkas belum ada, diberi ruang kosong.
+\newcommand{\ttd}[1]{\IfFileExists{../ignore/#1}{\includegraphics[width=3.2cm,height=1.75cm,keepaspectratio]{../ignore/#1}}{\rule{0pt}{1.75cm}}}
+\newcommand{\anggota}[3]{\begin{minipage}[t]{0.46\textwidth}\centering\ttd{#3}\\[-2pt]\rule{5.8cm}{0.35pt}\\[3pt]\textbf{#1}\\#2\end{minipage}}
+\begin{document}
+\pagestyle{empty}
+\begin{center}
+{\large UNIVERSITAS INDONESIA\\[8pt] ANALISIS NUMERIK -- SEMESTER GASAL 2026/2027}\par
+\vspace{1.3cm}
+{\large\bfseries TK 2: Optimisasi \& Interpolasi}\par
+\vspace{0.8cm}
+{\Large Kelompok A9}\par
+\vspace{0.7cm}
+\begin{tabular}{ll}
+2406402542 & Naufal Zafran Fadil\\
+2406429563 & AMAR HAKIM\\
+2406397196 & Refki Septian\\
+2406431334 & JENISA BUNGA SOLAGRACIA
+\end{tabular}
+\end{center}
+\vspace{0.7cm}
+\noindent\textbf{Pakta integritas}\par\medskip
+\noindent Dengan ini, kami menyatakan bahwa tugas ini adalah hasil pekerjaan kelompok sendiri.
+\vspace{0.55cm}
+\begin{center}
+\anggota{Naufal Zafran Fadil}{2406402542}{ttd_naufal.png}\hfill
+\anggota{AMAR HAKIM}{2406429563}{ttd_amar.png}\par\vspace{0.4cm}
+\anggota{Refki Septian}{2406397196}{ttd_refki.png}\hfill
+\anggota{JENISA BUNGA SOLAGRACIA}{2406431334}{ttd_jenisa.png}\par
+\end{center}
+\vspace{0.35cm}
+% TODO: sesuaikan persentase kontribusi final sebelum submit (lihat WORK_SPLIT.md)
+\noindent\textbf{Distribusi kontribusi.} Soal 1 dan Soal 2 masing-masing mencakup 50\% pekerjaan kelompok. Kontribusi total setiap anggota adalah 25\%: Naufal Zafran Fadil 25\%, AMAR HAKIM 25\%, Refki Septian 25\%, dan JENISA BUNGA SOLAGRACIA 25\%.
+\end{document}

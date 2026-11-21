@@ -1,0 +1,42 @@
+% Preamble bersama untuk kedua laporan TK 2 (soal1 dan soal2).
+% Mengikuti "Petunjuk Penulisan Dokumen Project Anum":
+%   - A4, font standar LaTeX (Latin Modern), 12pt, margin >= 2.54 cm
+%   - judul, rangkuman, daftar isi TIDAK dinomori; bagian lain dinomori dari 1
+%   - tabel/gambar/kode/persamaan dinomori mengikuti bagian: Tabel 3.1, Gambar 3.2, Kode 3.1
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[indonesian]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.54cm]{geometry}
+\usepackage{amsmath,amssymb,booktabs,array,graphicx,float,microtype}
+\usepackage{algorithm,algpseudocode}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+\emergencystretch=1em
+
+\numberwithin{equation}{section}
+\counterwithin{table}{section}
+\counterwithin{figure}{section}
+\counterwithin{algorithm}{section}
+\floatname{algorithm}{Kode}
+\renewcommand{\lstlistingname}{Kode}
+\algrenewcommand\algorithmicrequire{\textbf{Masukan:}}
+\algrenewcommand\algorithmicensure{\textbf{Keluaran:}}
+\setlength{\belowcaptionskip}{6pt}
+\lstset{language=Python, basicstyle=\ttfamily\footnotesize, breaklines=true,
+  columns=fullflexible, keepspaces=true, showstringspaces=false, frame=single}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\T}{\mathsf{T}}
+\newcommand{\norm}[1]{\left\lVert #1\right\rVert_2}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bd}{\mathbf{d}}
+\newcommand{\bg}{\mathbf{g}}
+\newcommand{\bs}{\mathbf{s}}
+\newcommand{\by}{\mathbf{y}}
+
+% \input biasa di dalam tabular gagal bila diikuti \bottomrule; pakai primitif \@@input
+\makeatletter\newcommand{\isitabel}[1]{\@@input #1 }\makeatother
+
+% Grafik dicari di report/figures/ dan results/ (relatif terhadap folder report/)
+\graphicspath{{figures/}{../results/}}

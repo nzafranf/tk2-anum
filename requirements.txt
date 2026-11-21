@@ -1,0 +1,4 @@
+numpy
+matplotlib
+pandas
+pymupdf   # hanya untuk build.py (menggabung PDF)

@@ -1,0 +1,61 @@
+\documentclass[12pt,a4paper]{article}
+\input{../../common/preamble.tex}
+\begin{document}
+
+% ---- Judul (1 baris, tidak dinomori) ----
+\begin{center}
+{\Large\bfseries Soal 2: Prediksi Data Hilang dengan Interpolasi Polinomial dan Spline}\par\medskip
+Kelompok A9 -- TK 2 Analisis Numerik
+\end{center}
+
+% ---- Rangkuman (~1/2 halaman, tidak dinomori). Ditulis TERAKHIR. ----
+\section*{Rangkuman}
+% TODO: masalah, model (polinomial d=2..9, spline linear, spline kubik natural), galat, FLOP, waktu, rekomendasi.
+
+\setcounter{tocdepth}{1}
+\tableofcontents
+\clearpage
+
+\section{Pendahuluan}
+% TODO (ditulis terakhir).
+
+\section{Data}\label{sec:data}
+% Tabel 2 (latih) dan Tabel 3 (uji) dari soal; pemetaan x = 2t/9 - 1.
+
+\section{Interpolasi Polinomial Basis Standar}\label{sec:poly}
+% Tugas (i): indeks i_j = floor(9j/d + 1/2), Vandermonde, Gauss pivot parsial, Horner; tabel koefisien semua derajat.
+
+\section{Spline Linear}\label{sec:linspline}
+% Tugas (ii): koefisien per segmen dalam koordinat lokal t - t_i.
+
+\section{Spline Kubik Natural}\label{sec:cubspline}
+% Tugas (iii): sebutkan algoritma (mis. Sauer); koefisien per segmen dalam t - t_i.
+
+\section{Prediksi dan Galat}\label{sec:galat}
+% Tugas (iv): tabel z_hat, z, |z_hat - z|, norma l2 untuk tiap model.
+
+\section{Visualisasi}\label{sec:visual}
+% Tugas (v): Gambar 1 (kurva poli + spline, 201 titik, penanda latih/uji), Gambar 2 (galat per titik uji; norma l2 vs derajat + 2 garis mendatar).
+
+\section{Jumlah Operasi (FLOP)}\label{sec:flop}
+% Tugas (vi): hitung pembentukan vs evaluasi lima titik uji; tunjukkan cara menghitung.
+
+\section{Waktu Eksekusi}\label{sec:waktu}
+% Tugas (vii): perf_counter; median 5 rangkaian x 100 panggilan; sebut lingkungan eksekusi + satuan.
+
+\section{Analisis}\label{sec:analisis}
+% Tugas (viii): tren galat vs derajat, tengah vs ujung, FLOP vs waktu, pilih satu model + alasan.
+
+\section{Kesimpulan}
+% TODO: 1--2 paragraf.
+
+\begin{thebibliography}{9}
+\renewcommand{\refname}{Referensi}
+\bibitem{sauer} T. Sauer, \emph{Numerical Analysis}, edisi ke-3. Pearson, 2018, Bab 3.
+% TODO: tambah referensi yang benar-benar dipakai (bukan slide kuliah).
+\end{thebibliography}
+
+\appendix
+\section{Lampiran}
+% Kode program (bukan pseudocode), tabel koefisien rinci.
+\end{document}
