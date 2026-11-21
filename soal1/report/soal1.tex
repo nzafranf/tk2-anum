@@ -21,11 +21,157 @@ Kelompok A9 -- TK 2 Analisis Numerik
 % TODO (ditulis terakhir): deskripsi masalah, tujuan, cara studi dilakukan.
 
 \section{Metode Pencarian Langkah}\label{sec:linesearch}
-% Tugas (i): binary search vs Armijo; Tabel hasil uji; pilihan metode + alasan.
-% Pseudocode (Kode 2.1, 2.2) -- beri caption + penjelasan di teks.
+
+\subsection{Kerangka iterasi}
+Kedua algoritma pada laporan ini meminimumkan fungsi Rosenbrock $f:\R^2\to\R$,
+$f(x,y)=100(y-x^2)^2+(1-x)^2$, yang gradiennya
+\begin{equation}\label{eq:grad}
+\nabla f(x,y)=\begin{pmatrix}-400x(y-x^2)-2(1-x)\\ 200(y-x^2)\end{pmatrix}.
+\end{equation}
+Pada iterasi ke-$k$, $\bx_k\in\R^2$ adalah iterat saat ini, $\bg_k=\nabla f(\bx_k)$ gradiennya, dan
+$\bd_k\in\R^2$ arah pencarian. Iterat berikutnya ialah
+\begin{equation}\label{eq:update}
+\bx_{k+1}=\bx_k+\alpha_k\bd_k,
+\end{equation}
+dengan panjang langkah $\alpha_k>0$ yang dipilih oleh metode pencarian langkah. Pemilihan ini merupakan
+minimisasi satu dimensi atas
+\[
+\phi(\alpha)=f(\bx_k+\alpha\bd_k),\qquad \phi'(\alpha)=\nabla f(\bx_k+\alpha\bd_k)^\T\bd_k .
+\]
+Arah $\bd_k$ disebut arah turun bila $\phi'(0)=\bg_k^\T\bd_k<0$; pada kondisi ini $f$ pasti berkurang untuk
+$\alpha$ yang cukup kecil~\cite{nocedal}. Iterasi dihentikan saat $\norm{\bg_k}\le10^{-6}$ atau setelah
+$10\,000$ iterasi. Kedua metode pencarian langkah di bawah dijalankan dengan fungsi yang sama,
+\texttt{ls(prob, x, d, g, fx)}, di berkas \texttt{soal1/code/linesearch.py}.
+
+\subsection{Binary search pada turunan arah}
+Binary search mencari titik stasioner $\phi'(\alpha)=0$, yaitu minimum $f$ sepanjang garis (\emph{exact line
+search}). Karena $\phi'(0)<0$, ujung kiri $a=0$ sudah memenuhi syarat. Ujung kanan dicari dengan menggandakan
+$b=1,2,4,\dots$ sampai $\phi'(b)>0$. Selanjutnya interval $[a,b]$ dibagi dua, dengan tetap menjaga
+$\phi'(a)<0<\phi'(b)$, hingga lebarnya kurang dari $10^{-6}$. Titik tengah interval terakhir dipakai sebagai
+$\alpha_k$. Prosedurnya ditunjukkan pada Kode~\ref{alg:binary}. Setiap nilai $\phi'$ memerlukan satu evaluasi
+$\nabla f$, dan metode ini tidak mengevaluasi $f$ sama sekali.
+
+\begin{algorithm}[H]
+\caption{Binary search pada $\phi'(\alpha)$.}\label{alg:binary}
+\begin{algorithmic}[1]
+\Require $\bx$, arah turun $\bd$, $\bg=\nabla f(\bx)$, toleransi lebar $\tau=10^{-6}$
+\Ensure panjang langkah $\alpha$
+\State $a\gets0$, $b\gets1$
+\While{$\nabla f(\bx+b\bd)^\T\bd\le0$} \Comment{maksimal 60 penggandaan}
+  \State $a\gets b$, $b\gets2b$
+\EndWhile
+\While{$b-a\ge\tau$}
+  \State $m\gets(a+b)/2$, $s\gets\nabla f(\bx+m\bd)^\T\bd$
+  \If{$s<0$} $a\gets m$ \ElsIf{$s>0$} $b\gets m$ \Else\ \Return $m$ \EndIf
+\EndWhile
+\State \Return $(a+b)/2$
+\end{algorithmic}
+\end{algorithm}
+
+Bila $\phi'(1)>0$ sudah pada percobaan pertama, interval awalnya $[0,1]$. Interval tersebut mencapai lebar di bawah
+$10^{-6}$ setelah $20$ pembagian, karena $2^{-20}\approx9.5\times10^{-7}$. Jadi satu pencarian langkah umumnya
+memerlukan $1+20=21$ evaluasi gradien.
+
+\subsection{Armijo backtracking}
+Armijo backtracking tidak mencari minimum $\phi$, tetapi hanya menuntut penurunan yang cukup~\cite{armijo}.
+Mulai dari $\alpha=1$, langkah dikalikan $0.5$ selama syarat
+\begin{equation}\label{eq:armijo}
+f(\bx_k+\alpha\bd_k)\le f(\bx_k)+c_1\alpha\,\bg_k^\T\bd_k,\qquad c_1=10^{-4},
+\end{equation}
+belum terpenuhi (Kode~\ref{alg:armijo}). Nilai $f(\bx_k)$ dan $\bg_k$ sudah tersedia dari iterasi
+sebelumnya, sehingga setiap percobaan $\alpha$ hanya memerlukan satu evaluasi $f$.
+
+\begin{algorithm}[H]
+\caption{Armijo backtracking.}\label{alg:armijo}
+\begin{algorithmic}[1]
+\Require $\bx$, arah turun $\bd$, $\bg=\nabla f(\bx)$, $f(\bx)$, $c_1=10^{-4}$
+\Ensure panjang langkah $\alpha$
+\State $\alpha\gets1$
+\While{$f(\bx+\alpha\bd)>f(\bx)+c_1\alpha\,\bg^\T\bd$} \Comment{maksimal 60 pengecilan}
+  \State $\alpha\gets0.5\,\alpha$
+\EndWhile
+\State \Return $\alpha$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Hasil uji dan pemilihan metode}
+Kedua metode diuji dengan CGM varian Polak--Ribi\`ere+ (PR+, Subbagian~\ref{sec:cgm}) dari kedua titik awal,
+$(-1.2,1)$ dan $(3,-2)$. Jumlah evaluasi dihitung oleh pembungkus fungsi yang menambah pencacah setiap kali $f$ atau
+$\nabla f$ dipanggil. Hitungan ini mencakup evaluasi di titik awal, evaluasi di dalam pencarian langkah, dan satu
+evaluasi $f$ serta $\nabla f$ di $\bx_{k+1}$ pada setiap iterasi. Tabel~\ref{tab:linesearch} memuat hasilnya, yang
+dihasilkan oleh \texttt{soal1/code/exp\_linesearch.py}.
+
+\begin{table}[H]\centering
+\caption{Hasil uji metode pencarian langkah dengan CGM PR+.}\label{tab:linesearch}
+\begin{tabular}{clrrrcc}\toprule
+Uji & Metode & Iterasi & Evaluasi $f$ & Evaluasi $\nabla f$ & $f$ akhir & $\norm{\nabla f}$ akhir\\\midrule
+\isitabel{generated/linesearch_table.tex}
+\bottomrule
+\end{tabular}
+\end{table}
+
+Pada Tabel~\ref{tab:linesearch}, keempat percobaan konvergen ke $(1,1)$. Binary search memerlukan 34 dan 33
+iterasi, sedangkan Armijo memerlukan 1124 dan 1061 iterasi, atau sekitar 32 kali lebih banyak. Biaya per iterasi
+binary search lebih besar, yaitu rata-rata $(752-1-34)/34\approx21.1$ evaluasi gradien dalam pencarian langkah,
+sesuai perkiraan 21 pada subbagian sebelumnya. Armijo memerlukan rata-rata $(12312-1-1124)/1124\approx9.95$
+percobaan $\alpha$ per iterasi pada uji~1. Dengan demikian, langkah yang diterima umumnya $2^{-9}\approx0.002$.
+Meski begitu, total evaluasi ($f$ ditambah $\nabla f$) binary search hanya 787 dan 766, dibandingkan 13\,437 dan
+12\,672 untuk Armijo, atau sekitar 17 kali lebih sedikit. Evaluasi $f$ dan $\nabla f$ Rosenbrock berbiaya sebanding,
+sehingga perbandingan total ini wajar dipakai. Akurasi akhir binary search juga lebih baik. Norma gradien akhirnya
+$9.74\times10^{-8}$ dan $1.33\times10^{-8}$, sedangkan Armijo berhenti tepat di bawah toleransi ($9.61\times10^{-7}$
+dan $9.51\times10^{-7}$).
+
+Perbedaan besar ini berasal dari sifat CGM. Arah konjugat dibangun dengan anggapan bahwa $\alpha_k$ meminimumkan
+$\phi$, sehingga $\bg_{k+1}^\T\bd_k\approx0$~\cite{nocedal}. Armijo hanya menjamin penurunan cukup, sehingga
+anggapan tersebut tidak terpenuhi. Arah berikutnya lalu kehilangan sifat konjugat dan perilakunya mendekati
+\emph{steepest descent}, yang terkenal lambat pada lembah sempit Rosenbrock. Berdasarkan ketiga kriteria (jumlah
+iterasi, jumlah evaluasi, dan akurasi akhir), \textbf{binary search dipilih} untuk seluruh percobaan pada
+Bagian~\ref{sec:varian} dan~\ref{sec:hasil}.
 
 \section{Varian Algoritma}\label{sec:varian}
-% Tugas (ii): dua rumus beta_k untuk CGM, dua rumus pembaruan untuk quasi-Newton.
+
+\subsection{Conjugate Gradient Method}\label{sec:cgm}
+CGM nonlinear membentuk arah baru dari gradien negatif dan arah sebelumnya,
+\begin{equation}\label{eq:cgdir}
+\bd_0=-\bg_0,\qquad \bd_{k+1}=-\bg_{k+1}+\beta_k\bd_k,
+\end{equation}
+dengan skalar $\beta_k$ yang menentukan varian. Kami memakai dua rumus berikut. Rumus Fletcher--Reeves
+(FR)~\cite{fr} ialah
+\begin{equation}\label{eq:fr}
+\beta_k^{\mathrm{FR}}=\frac{\bg_{k+1}^\T\bg_{k+1}}{\bg_k^\T\bg_k}.
+\end{equation}
+Rumus kedua ialah Polak--Ribi\`ere~\cite{pr} yang dipotong di nol (PR+)~\cite{gilbert},
+\begin{equation}\label{eq:prp}
+\beta_k^{\mathrm{PR+}}=\max\left\{0,\ \frac{\bg_{k+1}^\T(\bg_{k+1}-\bg_k)}{\bg_k^\T\bg_k}\right\}.
+\end{equation}
+Pada fungsi kuadrat dengan pencarian langkah eksak, kedua rumus identik karena $\bg_{k+1}^\T\bg_k=0$. Pada fungsi
+nonlinear, keduanya berbeda. Bila langkah terakhir kecil, $\bg_{k+1}\approx\bg_k$, sehingga $\beta^{\mathrm{PR+}}$
+mendekati nol dan arah otomatis kembali ke gradien negatif. Pada kondisi yang sama $\beta^{\mathrm{FR}}$ mendekati
+satu, sehingga arah lama terus terbawa~\cite{nocedal}.
+
+Kode~\ref{alg:cgm} merangkum implementasi pada \texttt{soal1/code/cgm.py}. Pencarian langkah binary search hanya
+bermakna bila $\bd_k$ arah turun. Karena itu, arah di-\emph{restart} ke $-\bg_k$ bila $\bg_k^\T\bd_k\ge0$ atau bila
+pencarian langkah tidak menemukan $\alpha>0$.
+
+\begin{algorithm}[H]
+\caption{CGM nonlinear dengan restart.}\label{alg:cgm}
+\begin{algorithmic}[1]
+\Require $\bx_0$, rumus $\beta$ (FR atau PR+), pencarian langkah \textsc{LS}, toleransi $10^{-6}$, batas $10\,000$
+\Ensure iterat akhir $\bx_k$
+\State $\bg_0\gets\nabla f(\bx_0)$, $\bd_0\gets-\bg_0$, $k\gets0$
+\While{$\norm{\bg_k}>10^{-6}$ \textbf{and} $k<10\,000$}
+  \If{$\bg_k^\T\bd_k\ge0$} $\bd_k\gets-\bg_k$ \Comment{restart} \EndIf
+  \State $\alpha_k\gets\textsc{LS}(\bx_k,\bd_k)$
+  \State $\bx_{k+1}\gets\bx_k+\alpha_k\bd_k$, $\bg_{k+1}\gets\nabla f(\bx_{k+1})$
+  \State $\bd_{k+1}\gets-\bg_{k+1}+\beta_k\bd_k$ \Comment{$\beta_k$ dari \eqref{eq:fr} atau \eqref{eq:prp}}
+  \State $k\gets k+1$
+\EndWhile
+\State \Return $\bx_k$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Quasi-Newton}\label{sec:qn}
+% TODO (Amar): dua rumus pembaruan B_k / H_k, s_k, y_k, pseudocode.
 
 \section{Perbandingan Hasil}\label{sec:hasil}
 % Tugas (iii): tabel 8 baris (uji x algoritma x varian), jarak ke x* = (1,1).
@@ -39,14 +185,23 @@ Kelompok A9 -- TK 2 Analisis Numerik
 \section{Kesimpulan}
 % TODO: 1--2 paragraf.
 
-\begin{thebibliography}{9}
 \renewcommand{\refname}{Referensi}
-\bibitem{nocedal} J. Nocedal dan S. J. Wright, \emph{Numerical Optimization}, edisi ke-2. Springer, 2006.
+\begin{thebibliography}{9}
+\bibitem{nocedal} J. Nocedal dan S. J. Wright, \emph{Numerical Optimization}, edisi ke-2. Springer, 2006, Bab 3 dan 5.
+\bibitem{armijo} L. Armijo, ``Minimization of functions having Lipschitz continuous first partial derivatives,'' \emph{Pacific Journal of Mathematics}, vol.~16, no.~1, hlm.~1--3, 1966.
+\bibitem{fr} R. Fletcher dan C. M. Reeves, ``Function minimization by conjugate gradients,'' \emph{The Computer Journal}, vol.~7, no.~2, hlm.~149--154, 1964.
+\bibitem{pr} E. Polak dan G. Ribi\`ere, ``Note sur la convergence de m\'ethodes de directions conjugu\'ees,'' \emph{Revue fran\c{c}aise d'informatique et de recherche op\'erationnelle}, vol.~3, no.~16, hlm.~35--43, 1969.
+\bibitem{gilbert} J. C. Gilbert dan J. Nocedal, ``Global convergence properties of conjugate gradient methods for optimization,'' \emph{SIAM Journal on Optimization}, vol.~2, no.~1, hlm.~21--42, 1992.
 % TODO: tambah referensi yang benar-benar dipakai (bukan slide kuliah).
 \end{thebibliography}
 
 \appendix
+\renewcommand{\thelstlisting}{A.\arabic{lstlisting}}
 \section{Lampiran}
-% Kode program (bukan pseudocode), tabel rinci. Contoh:
-% \lstinputlisting[caption={Implementasi CGM.},label={code:cgm}]{../code/cgm.py}
+\subsection{Kode program}
+Kode~\ref{code:ls} dan Kode~\ref{code:cgm} adalah implementasi Python dari Kode~\ref{alg:binary},
+\ref{alg:armijo}, dan~\ref{alg:cgm}. Kelas \texttt{Problem} di \texttt{soal1/code/common.py} menghitung $f$ dan
+$\nabla f$ menurut \eqref{eq:grad} sekaligus mencatat jumlah evaluasinya.
+\lstinputlisting[caption={Pencarian langkah (\texttt{soal1/code/linesearch.py}).},label={code:ls}]{../code/linesearch.py}
+\lstinputlisting[caption={CGM FR dan PR+ (\texttt{soal1/code/cgm.py}).},label={code:cgm}]{../code/cgm.py}
 \end{document}
