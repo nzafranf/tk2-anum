@@ -10,7 +10,22 @@ Kelompok A9 -- TK 2 Analisis Numerik
 
 % ---- Rangkuman (~1/2 halaman, tidak dinomori). Ditulis TERAKHIR. ----
 \section*{Rangkuman}
-% TODO: masalah, metode (CGM, quasi-Newton, pencarian langkah), hasil utama (iterasi, evaluasi, akurasi), kesimpulan.
+Laporan ini membandingkan kinerja metode \emph{Conjugate Gradient} nonlinear (CGM) dan \emph{Quasi-Newton} untuk
+meminimumkan fungsi Rosenbrock $f(x,y)=100(y-x^2)^2+(1-x)^2$ tanpa kendala dari titik awal $(-1.2,1)$ (Uji~1) dan
+$(3,-2)$ (Uji~2) hingga $\norm{\nabla f(\bx_k)}\le10^{-6}$ atau mencapai $10\,000$ iterasi. Seluruh algoritma utama
+diimplementasikan mandiri tanpa pustaka optimisasi maupun penyelesai sistem linear, mencakup pencarian langkah
+\emph{binary search} dan \emph{Armijo backtracking}, CGM varian Fletcher--Reeves (FR) dan Polak--Ribi\`ere+ (PR+),
+serta Quasi-Newton varian BFGS dan DFP berbasis invers eksplisit matriks $2\times2$.
+
+Pada uji pemilihan pencarian langkah dengan CGM PR+, \emph{binary search} jauh mengungguli Armijo dalam iterasi (34 dan
+33 berbanding 1124 dan 1061), total evaluasi fungsi serta gradien (787 dan 766 berbanding 13\,437 dan 12\,672), maupun
+akurasi akhir, sehingga dipakai pada seluruh percobaan utama. Kedelapan pengujian varian konvergen ke minimum sejati
+$\bx^*=(1,1)$. Untuk CGM, PR+ konsisten mengungguli FR di kedua titik awal (34 vs.\ 35 iterasi pada Uji~1; 33 vs.\
+1401 iterasi pada Uji~2) dengan galat jarak orde $10^{-10}$--$10^{-9}$. Untuk Quasi-Newton, BFGS dan DFP menempuh
+iterasi yang sama (13 pada Uji~1; 40 pada Uji~2) selaras dengan ekuivalensi pencarian langkah eksak, namun BFGS unggul
+konsisten dalam penghematan evaluasi gradien (308 vs.\ 352; 942 vs.\ 1234) dan ketelitian Uji~2
+($\norm{\bx_K-\bx^*}=3.79\times10^{-10}$). Pembaruan matriks kelengkungan memampukan Quasi-Newton BFGS menyusuri dasar
+lembah $y=x^2$ secara monoton dengan konvergensi superlinear tanpa osilasi lintas-cabang yang dialami CGM PR+.
 
 \setcounter{tocdepth}{1}
 \tableofcontents
@@ -18,7 +33,39 @@ Kelompok A9 -- TK 2 Analisis Numerik
 
 % ---- Bagian bernomor ----
 \section{Pendahuluan}
-% TODO (ditulis terakhir): deskripsi masalah, tujuan, cara studi dilakukan.
+Optimisasi numerik tanpa kendala bertujuan mencari titik minimum dari suatu fungsi objektif terdiferensialkan pada
+ruang berdimensi hingga ketika penyelesaian analitik persamaan gradien nol sulit atau tidak praktis diperoleh secara
+umum. Salah satu fungsi uji standar untuk mengukur ketangguhan algoritma optimisasi berbasis gradien ialah fungsi
+Rosenbrock~\cite{rosenbrock}, yang pada ruang $\R^2$ didefinisikan untuk pasangan koordinat riil $(x,y)\in\R^2$ oleh
+$f(x,y)=100(y-x^2)^2+(1-x)^2$. Fungsi ini memiliki titik minimum global tunggal di $\bx^*=(1,1)^\T$ dengan nilai
+minimum $f(1,1)=0$. Tantangan utama fungsi Rosenbrock terletak pada topografinya yang membentuk lembah sempit
+melengkung mengikuti parabola $y=x^2$: kemiringan fungsi di arah tegak lurus lembah ratusan kali lebih curam daripada
+kemiringan di sepanjang dasar lembah menuju $(1,1)$. Akibatnya, metode penurunan tercuram (\emph{steepest descent})
+sangat tidak efisien karena terus berosilasi zig-zag menabrak dinding lembah dengan langkah amat kecil~\cite{nocedal}.
+Sebaliknya, metode Newton murni membutuhkan turunan kedua (matriks Hessian) eksplisit beserta penyelesaian sistem
+linear di setiap iterasi, serta tidak menjamin arah turun ketika matriks Hessian belum definit positif di daerah jauh
+dari minimum.
+
+Keterbatasan kedua pendekatan dasar tersebut memotivasi penggunaan metode orde pertama lanjut yang hanya memerlukan
+evaluasi fungsi dan gradien namun mampu memanfaatkan informasi kelengkungan secara tidak langsung, yaitu
+\emph{Conjugate Gradient Method} (CGM) nonlinear dan metode \emph{Quasi-Newton}. CGM membentuk arah pencarian baru
+sebagai kombinasi linear gradien negatif saat ini dan arah pencarian sebelumnya melalui satu skalar faktor konjugasi,
+sehingga kebutuhan memorinya sangat ringan. Sementara itu, metode Quasi-Newton membangun dan memperbarui matriks
+hampiran Hessian berorde dua secara bertahap dari selisih iterat dan selisih gradien berurutan agar dapat meniru
+percepatan lokal metode Newton tanpa menghitung turunan kedua. Studi pada laporan ini bertujuan mengimplementasikan
+sendiri kedua algoritma tersebut, menetapkan skema pencarian langkah yang paling sesuai, serta membandingkan efektivitas,
+efisiensi komputasi, ketelitian akhir, dan geometri lintasan keempat variannya pada fungsi Rosenbrock.
+
+Studi dilaksanakan melalui serangkaian eksperimen numerik terkontrol dari dua titik awal berbeda, yakni
+$\bx_0=(-1.2,1)^\T$ pada Uji~1 yang berada dekat cabang kiri lembah dan $\bx_0=(3,-2)^\T$ pada Uji~2 yang berada jauh
+di luar lembah, dengan batas penghentian $\norm{\nabla f(\bx_k)}\le10^{-6}$ atau maksimum $10\,000$ iterasi. Pertama,
+Bagian~\ref{sec:linesearch} menguji dua metode pencarian langkah---\emph{binary search} pada turunan arah dan
+\emph{Armijo backtracking}---pada satu varian CGM untuk memilih satu pencari langkah terbaik berdasarkan jumlah
+iterasi, jumlah evaluasi fungsi dan gradien, serta akurasi akhir. Kedua, Bagian~\ref{sec:varian} merumuskan dua varian
+CGM (Fletcher--Reeves dan Polak--Ribi\`ere+) serta dua varian Quasi-Newton (BFGS dan DFP) yang memanfaatkan invers
+analitik matriks $2\times2$. Ketiga, Bagian~\ref{sec:hasil} membandingkan hasil kedelapan percobaan utama menggunakan
+pencari langkah terpilih, diikuti visualisasi lintasan dan laju penurunan norma gradien pada Uji~1 di
+Bagian~\ref{sec:visual}, serta pembahasan analitis atas empat pertanyaan studi di Bagian~\ref{sec:analisis}.
 
 \section{Metode Pencarian Langkah}\label{sec:linesearch}
 
@@ -171,37 +218,272 @@ pencarian langkah tidak menemukan $\alpha>0$.
 \end{algorithm}
 
 \subsection{Quasi-Newton}\label{sec:qn}
-% TODO (Amar): dua rumus pembaruan B_k / H_k, s_k, y_k, pseudocode.
+Berbeda dari CGM yang hanya menyimpan satu vektor arah sebelumnya, metode Quasi-Newton memelihara matriks simetris
+definit positif $B_k\in\R^{2\times2}$ pada setiap iterasi ke-$k$ sebagai hampiran matriks Hessian
+$\nabla^2 f(\bx_k)$, dimulai dari matriks identitas $B_0=I\in\R^{2\times2}$. Dengan gradien saat ini
+$\bg_k=\nabla f(\bx_k)\in\R^2$, arah pencarian $\bd_k\in\R^2$ ditentukan oleh
+\begin{equation}\label{eq:qndir}
+\bd_k=-B_k^{-1}\bg_k.
+\end{equation}
+Karena masalah berdimensi dua, matriks $B_k$ dengan entri riil $b_{11},b_{12},b_{21},b_{22}\in\R$ diinverskan secara
+eksplisit tanpa pustaka penyelesai sistem linear. Menggunakan determinan $\Delta_k=b_{11}b_{22}-b_{12}b_{21}\in\R$
+yang tak-nol ($\Delta_k\neq0$), invers matriks pada \eqref{eq:qndir} dihitung melalui
+\begin{equation}\label{eq:inv2x2}
+B_k^{-1}=\frac{1}{\Delta_k}\begin{pmatrix}b_{22} & -b_{12}\\ -b_{21} & b_{11}\end{pmatrix}.
+\end{equation}
+Bila $B_k$ definit positif, maka $B_k^{-1}$ juga definit positif sehingga $\bg_k^\T\bd_k=-\bg_k^\T B_k^{-1}\bg_k<0$
+untuk setiap $\bg_k\neq\mathbf{0}$, yang menjamin $\bd_k$ merupakan arah turun~\cite{nocedal}.
+
+Setelah panjang langkah $\alpha_k>0$ diperoleh dari pencarian langkah dan iterat diperbarui menjadi
+$\bx_{k+1}=\bx_k+\alpha_k\bd_k$ beserta gradien baru $\bg_{k+1}=\nabla f(\bx_{k+1})$, didefinisikan vektor selisih
+iterat $\bs_k\in\R^2$ dan vektor selisih gradien $\by_k\in\R^2$ sebagai
+\begin{equation}\label{eq:sy}
+\bs_k=\bx_{k+1}-\bx_k,\qquad \by_k=\bg_{k+1}-\bg_k.
+\end{equation}
+Matriks hampiran berikutnya $B_{k+1}\in\R^{2\times2}$ dibentuk agar memenuhi persamaan sekant
+$B_{k+1}\bs_k=\by_k$, yang meniru hubungan diferensial $\nabla^2 f(\bx_{k+1})\bs_k\approx\by_k$. Supaya sifat definit
+positif terwariskan dari $B_k$ ke $B_{k+1}$, pasangan vektor pada \eqref{eq:sy} harus memenuhi syarat kelengkungan
+$\bs_k^\T\by_k>0$~\cite{nocedal}. Pada pencarian langkah \emph{binary search} yang membuat
+$\bg_{k+1}^\T\bd_k\approx0$, hasil kali dalam tersebut bernilai
+$\bs_k^\T\by_k=\alpha_k(\bg_{k+1}^\T\bd_k-\bg_k^\T\bd_k)\approx-\alpha_k\bg_k^\T\bd_k>0$, sehingga syarat kelengkungan
+secara alami terpenuhi.
+
+Kami menggunakan dua rumus pembaruan berperingkat dua (\emph{rank-two}) yang berbeda. Varian pertama adalah rumus
+Broyden--Fletcher--Goldfarb--Shanno (BFGS)~\cite{bfgs}, yaitu
+\begin{equation}\label{eq:bfgs}
+B_{k+1}^{\mathrm{BFGS}}=B_k-\frac{B_k\bs_k\bs_k^\T B_k}{\bs_k^\T B_k\bs_k}+\frac{\by_k\by_k^\T}{\bs_k^\T\by_k}.
+\end{equation}
+Varian kedua adalah rumus Davidon--Fletcher--Powell (DFP)~\cite{fletcherpowell} yang memakai matriks identitas
+$I\in\R^{2\times2}$, yaitu
+\begin{equation}\label{eq:dfp}
+B_{k+1}^{\mathrm{DFP}}=\left(I-\frac{\by_k\bs_k^\T}{\bs_k^\T\by_k}\right)B_k\left(I-\frac{\bs_k\by_k^\T}{\bs_k^\T\by_k}\right)+\frac{\by_k\by_k^\T}{\bs_k^\T\by_k}.
+\end{equation}
+Kedua rumus bersifat dual satu sama lain: struktur aljabar pembaruan $B_{k+1}^{\mathrm{DFP}}$ pada \eqref{eq:dfp}
+identik dengan rumus pembaruan invers $B_{k+1}^{-1}$ milik BFGS apabila peran $\bs_k$ dan $\by_k$ dipertukarkan.
+Prosedur lengkap yang diimplementasikan pada berkas \texttt{soal1/code/quasi\_newton.py} dirangkum dalam
+Kode~\ref{alg:qn}. Sebagai pengaman numerik terhadap galat pembulatan, matriks $B_k$ di-\emph{reset} ke $I$ bila
+$|\Delta_k|\le10^{-30}$ atau $\bg_k^\T\bd_k\ge0$, sedangkan pembaruan dilewati ($B_{k+1}=B_k$) apabila
+$\bs_k^\T\by_k\le10^{-14}\norm{\bs_k}\norm{\by_k}$. Hasil pembaruan juga disimetrikan dengan
+$\frac{1}{2}(B_{k+1}+B_{k+1}^\T)$ agar simetri matriks tidak tergerus pembulatan titik-kambang.
+
+\begin{algorithm}[H]
+\caption{Metode Quasi-Newton (BFGS dan DFP) dengan invers eksplisit $2\times2$.}\label{alg:qn}
+\begin{algorithmic}[1]
+\Require $\bx_0$, varian pembaruan (BFGS atau DFP), pencarian langkah \textsc{LS}, toleransi $10^{-6}$, batas $10\,000$
+\Ensure iterat akhir $\bx_k$
+\State $\bg_0\gets\nabla f(\bx_0)$, $B_0\gets I$, $k\gets0$
+\While{$\norm{\bg_k}>10^{-6}$ \textbf{and} $k<10\,000$}
+  \If{$|\Delta_k|\le10^{-30}$} $B_k\gets I$, $\bd_k\gets-\bg_k$
+  \Else\ hitung $B_k^{-1}$ dari \eqref{eq:inv2x2}, $\bd_k\gets-B_k^{-1}\bg_k$
+  \EndIf
+  \If{$\bg_k^\T\bd_k\ge0$} $B_k\gets I$, $\bd_k\gets-\bg_k$ \Comment{pengaman arah turun} \EndIf
+  \State $\alpha_k\gets\textsc{LS}(\bx_k,\bd_k)$
+  \State $\bx_{k+1}\gets\bx_k+\alpha_k\bd_k$, $\bg_{k+1}\gets\nabla f(\bx_{k+1})$
+  \State $\bs_k\gets\bx_{k+1}-\bx_k$, $\by_k\gets\bg_{k+1}-\bg_k$
+  \If{$\bs_k^\T\by_k>10^{-14}\norm{\bs_k}\norm{\by_k}$}
+    \State perbarui $B_{k+1}$ menurut \eqref{eq:bfgs} atau \eqref{eq:dfp}, lalu simetrikan
+  \Else\ $B_{k+1}\gets B_k$
+  \EndIf
+  \State $k\gets k+1$
+\EndWhile
+\State \Return $\bx_k$
+\end{algorithmic}
+\end{algorithm}
 
 \section{Perbandingan Hasil}\label{sec:hasil}
-% Tugas (iii): tabel 8 baris (uji x algoritma x varian), jarak ke x* = (1,1).
+Keempat varian algoritma---CGM FR, CGM PR+, Quasi-Newton BFGS, dan Quasi-Newton DFP---dijalankan pada kedua titik awal
+menggunakan metode pencarian langkah terpilih, yakni \emph{binary search}, melalui skrip
+\texttt{soal1/code/run\_experiments.py}. Selain mencatat nilai objektif akhir $f(\bx_K)$, norma gradien akhir
+$\norm{\nabla f(\bx_K)}$, dan jumlah iterasi $K$, untuk setiap iterat akhir $\bx_K=(x_K,y_K)^\T\in\R^2$ dihitung pula
+jarak Euclidean terhadap titik minimum sejati $\bx^*=(1,1)^\T\in\R^2$, yaitu
+\[
+\norm{\bx_K-\bx^*}=\sqrt{(x_K-1)^2+(y_K-1)^2}.
+\]
+Tabel~\ref{tab:variants} menyajikan ringkasan kedelapan percobaan tersebut (data lengkap beserta jumlah evaluasi $f$
+dan $\nabla f$ tersimpan di \texttt{soal1/results/variants\_table.csv}).
+
+\begin{table}[H]\centering
+\caption{Hasil uji varian CGM dan Quasi-Newton dengan pencarian langkah \emph{binary search}.}\label{tab:variants}
+{\footnotesize\setlength{\tabcolsep}{3.4pt}
+\begin{tabular}{cllccccr}\toprule
+Uji & Algoritma & Varian & $\bx$ akhir & $f$ akhir & $\norm{\nabla f}$ akhir &
+\shortstack{$\norm{\bx-\bx^*}$\\akhir} & Iterasi\\\midrule
+\isitabel{generated/variants_table.tex}
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Berdasarkan Tabel~\ref{tab:variants}, seluruh delapan kombinasi konvergen ($\norm{\nabla f(\bx_K)}\le10^{-6}$) menuju
+$\bx^*=(1,1)$ dengan jarak Euclidean berkisar dari $3.79\times10^{-10}$ hingga $4.58\times10^{-7}$, tanpa satu pun
+pelanggaran syarat kelengkungan maupun \emph{reset} matriks pada BFGS dan DFP. Pada Uji~1, kedua varian Quasi-Newton
+tuntas dalam 13 iterasi, hampir tiga kali lebih cepat daripada CGM PR+ (34 iterasi) dan CGM FR (35 iterasi). Data
+lengkap di \texttt{variants\_table.csv} menunjukkan bahwa Quasi-Newton BFGS hanya memerlukan 14 evaluasi $f$ dan 308
+evaluasi $\nabla f$ (total 322), mengungguli DFP (14 dan 352), CGM PR+ (35 dan 752), serta CGM FR (36 dan 771),
+sementara pada CGM varian PR+ tiga orde besaran lebih teliti daripada FR ($6.84\times10^{-10}$ vs.\
+$3.11\times10^{-7}$).
+
+Pada Uji~2 dari $(3,-2)$, CGM PR+ tetap konvergen cepat dalam 33 iterasi (732 evaluasi $\nabla f$), sedangkan CGM FR
+melambat hingga 1401 iterasi ($30\,823$ evaluasi $\nabla f$) karena saat langkah memendek ($\bg_{k+1}\approx\bg_k$),
+faktor $\beta_k^{\mathrm{FR}}\approx1$ terus menumpuk arah lama, berbeda dengan $\beta_k^{\mathrm{PR+}}$ yang otomatis
+mendekati nol. Kedua varian Quasi-Newton memerlukan 40 iterasi pada Uji~2 sebab dari titik $(3,-2)$ jauh di bawah
+parabola, pembaruan sekant pertama melontarkan $\bx_2$ ke ujung lembah $(6.83,46.68)$ sebelum menyusuri lembah kembali
+ke $(1,1)$ dan mencapai ketelitian terbaik ($\norm{\bx_K-\bx^*}=3.79\times10^{-10}$ pada BFGS). Kesamaan jumlah iterasi
+BFGS dan DFP di kedua titik awal dijelaskan oleh Teorema Dixon~\cite{dixon}, yang menyatakan bahwa pada pencarian
+langkah eksak dari $B_0$ yang sama, anggota keluarga pembaruan Broyden menghasilkan arah kolinear dan barisan iterat
+identik. Namun, bilangan kondisi maksimum $B_k$ pada DFP memburuk hingga $1.41\times10^7$ pada Uji~2 (berbanding
+$3.91\times10^5$ pada BFGS), menyusutkan panjang $-\,B_k^{-1}\bg_k$ sehingga \emph{binary search} menggandakan batas
+kanan hingga $\alpha_k\approx1.16\times10^3$ dan memakan evaluasi gradien lebih banyak (1234 vs.\ 942).
 
 \section{Visualisasi}\label{sec:visual}
-% Tugas (iv): lintasan pada kontur f (skala log) + grafik log ||grad f|| vs k. Jelaskan cara menilai kesetaraan akurasi.
+Untuk Uji~1, dipilih satu wakil per algoritma. Dua varian kami nilai \textbf{setara akurasi akhirnya} bila keduanya
+konvergen ($\norm{\nabla f(\bx_K)}\le10^{-6}$) dan ketiga ukuran galat akhir---$f(\bx_K)$, $\norm{\nabla f(\bx_K)}$,
+serta $\norm{\bx_K-\bx^*}$---berada dalam satu orde besaran (rasio terbesar terhadap terkecil $<10$). Merujuk data
+Uji~1 pada Tabel~\ref{tab:variants}:
+\begin{enumerate}
+  \item Pada \textbf{CGM}, akurasi akhir keduanya tidak setara sebab PR+ unggul tiga sampai empat orde besaran atas FR
+  ($\norm{\bx_K-\bx^*}=6.84\times10^{-10}$ vs.\ $3.11\times10^{-7}$), sekaligus memiliki iterasi lebih sedikit (34 vs.\
+  35), sehingga dipilih \textbf{CGM PR+}.
+  \item Pada \textbf{Quasi-Newton}, akurasi akhir BFGS dan DFP benar-benar setara ($f(\bx_K)=3.00\times10^{-16}$,
+  $\norm{\nabla f(\bx_K)}=5.90\times10^{-7}$, dan $\norm{\bx_K-\bx^*}\approx2.52\times10^{-8}$, rasio $\approx1.00$).
+  Sesuai aturan akurasi setara, dibandingkan jumlah iterasinya; karena keduanya seri pada 13 iterasi akibat Teorema
+  Dixon, seri diputus dengan jumlah evaluasi gradien terkecil (308 pada BFGS vs.\ 352 pada DFP), sehingga dipilih
+  \textbf{Quasi-Newton BFGS}.
+\end{enumerate}
+Skrip \texttt{soal1/code/run\_experiments.py} menjalankan pemilihan tersebut secara otomatis dan membuat kedua grafik
+berikut.
+
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{trajectory.pdf}
+\caption{Lintasan iterasi $\bx_k$ pada kontur logaritmik $f(x,y)$ untuk Uji~1 dari $\bx_0=(-1.2,1)$: (a)~CGM PR+ pada
+bidang penuh dan (b)~Quasi-Newton BFGS pada wilayah diperbesar yang ditandai kotak putus-putus di panel~(a).}\label{fig:trajectory}
+\end{figure}
+
+Gambar~\ref{fig:trajectory} menampilkan lintasan $\bx_k$ kedua wakil terpilih di atas kontur fungsi Rosenbrock
+berskala logaritmik, disajikan dalam dua panel berdampingan karena rentang jelajah spasial keduanya berbeda jauh.
+Pada iterasi pertama ($k=0\to1$), baik CGM PR+ maupun Quasi-Newton BFGS berangkat dari $\bx_0=(-1.2,1)$ menggunakan
+arah gradien negatif yang sama ($\bd_0=-\bg_0$ karena $B_0=I$), sehingga keduanya mendarat di titik identik
+$\bx_1=(1.4408,2.0779)$ tepat pada cabang kanan dasar lembah $y=x^2$. Setelah titik tersebut, kedua lintasan berpisah
+secara drastis. Pada panel~(a), CGM PR+ mula-mula menuruni cabang kanan menuju $(0.16,0.03)$, tetapi arah konjugat
+garis lurusnya menembus lengkungan parabola dan melontarkan iterat ke cabang kiri atas hingga $(-3.35,11.25)$ pada
+$k=10$. Pantulan lintas-cabang ini berulang kembali ke cabang kanan di $(2.30,5.31)$ pada $k=16$ dan ke cabang kiri di
+$(-1.54,2.39)$ pada $k=21$, sebelum akhirnya masuk ke sekitar $(1.15,1.31)$ pada $k=26$ dan konvergen ke $(1,1)$ pada
+$k=34$. Sebaliknya, pada panel~(b), matriks $B_k$ pada Quasi-Newton BFGS segera mempelajari orientasi dinding dan dasar
+lembah sehingga seluruh iterat $\bx_1,\dots,\bx_{13}$ tetap berada rapat di sepanjang kurva $y=x^2$ dan bergerak
+monoton dari $(1.44,2.08)$ langsung menuju $\bx^*=(1,1)$ tanpa pernah melompat keluar lembah.
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.84\textwidth]{gradnorm.pdf}
+\caption{Grafik $\log_{10}\norm{\nabla f(\bx_k)}$ terhadap nomor iterasi $k$ pada Uji~1 untuk CGM PR+ dan
+Quasi-Newton BFGS.}\label{fig:gradnorm}
+\end{figure}
+
+Perbedaan geometri lintasan tersebut tercermin langsung pada kurva peluruhan $\log_{10}\norm{\nabla f(\bx_k)}$ terhadap
+nomor iterasi $k$ di Gambar~\ref{fig:gradnorm}. Meskipun nilai fungsi $f(\bx_k)$ selalu turun monoton berkat pencarian
+langkah \emph{binary search}, norma gradien tidak bersifat monoton pada lembah melengkung. Pada CGM PR+, setiap kali
+pencarian garis melintasi lengkungan lembah dan berhenti di lereng dinding seberang (seperti di sekitar $k=13$--$14$,
+$k=18$--$19$, dan $k=23$--$24$), kemiringan dinding yang curam membuat $\log_{10}\norm{\nabla f(\bx_k)}$ melonjak
+kembali hingga melampaui $+2$ (yakni $\norm{\nabla f}>100$), dan peluruhan cepat baru terjadi setelah $k=29$ saat fungsi
+sudah berperilaku hampir kuadratik di dekat $(1,1)$. Sebaliknya, pada Quasi-Newton BFGS fluktuasi awal jauh lebih
+teredam (tetap di bawah $+1$ sesudah $k=0$), lalu mulai $k=9$ kurva menukik semakin curam dari $-0.07$ ($k=9$),
+$-0.93$ ($k=10$), $-1.63$ ($k=11$), $-3.76$ ($k=12$), hingga $-6.23$ ($k=13$) menembus ambang konvergensi $-6$.
+Kemiringan yang makin terjal di penghujung iterasi ini memperlihatkan ciri khas laju konvergensi superlinear metode
+Quasi-Newton.
 
 \section{Analisis}\label{sec:analisis}
-% Tugas (v): jawab 4 pertanyaan secara singkat.
+Bagian ini menjawab secara ringkas keempat pertanyaan analisis berdasarkan bukti numerik pada Bagian~\ref{sec:linesearch}
+hingga~\ref{sec:visual}.
+
+\begin{enumerate}
+  \item \textbf{Metode pencarian langkah yang dipilih dan data pendukungnya.}
+  Metode yang dipilih adalah \textbf{binary search}. Pada Tabel~\ref{tab:linesearch} dengan CGM PR+, \emph{binary
+  search} mengungguli \emph{Armijo backtracking} secara telak di kedua titik awal pada ketiga tolok ukur: jumlah
+  iterasi sekitar 32 kali lebih sedikit (34 dan 33 iterasi berbanding 1124 dan 1061 iterasi), total evaluasi fungsi
+  dan gradien sekitar 17 kali lebih hemat ($35+752=787$ dan $34+732=766$ berbanding $12\,312+1125=13\,437$ dan
+  $11\,610+1062=12\,672$), serta akurasi akhir satu hingga empat orde besaran lebih tajam ($\norm{\nabla f}$ akhir
+  $9.74\times10^{-8}$ dan $1.33\times10^{-8}$ dengan $f\sim10^{-18}$, dibandingkan Armijo yang berhenti tepat di ambang
+  $9.61\times10^{-7}$ dan $9.51\times10^{-7}$ dengan $f\sim10^{-14}$--$10^{-13}$).
+
+  \item \textbf{Varian terbaik tiap algoritma dan konsistensi peringkatnya pada kedua titik awal.}
+  Untuk CGM, varian terbaik adalah \textbf{PR+}, dan peringkat $\text{PR+}>\text{FR}$ \textbf{sama (konsisten) pada
+  kedua titik awal}: PR+ lebih cepat serta lebih akurat baik pada Uji~1 (34 berbanding 35 iterasi; jarak ke $\bx^*$
+  sebesar $6.84\times10^{-10}$ berbanding $3.11\times10^{-7}$) maupun Uji~2 (33 berbanding 1401 iterasi; jarak
+  $6.25\times10^{-9}$ berbanding $4.58\times10^{-7}$). Untuk Quasi-Newton, varian terbaik adalah \textbf{BFGS}, dan
+  peringkat $\text{BFGS}\ge\text{DFP}$ juga \textbf{konsisten pada kedua titik awal}: walaupun Teorema Dixon membuat
+  jumlah iterasi keduanya sama di tiap titik awal (13 pada Uji~1; 40 pada Uji~2), pada Uji~1 akurasinya setara sementara
+  BFGS lebih hemat evaluasi gradien (308 berbanding 352), dan pada Uji~2 BFGS unggul baik dalam evaluasi gradien (942
+  berbanding 1234) maupun ketelitian akhir ($3.79\times10^{-10}$ berbanding $7.42\times10^{-10}$). (Sebagai catatan
+  lintas-algoritma, perbandingan jumlah iterasi antara QN BFGS dan CGM PR+ berbalik dari 13 berbanding 34 pada Uji~1
+  menjadi 40 berbanding 33 pada Uji~2 akibat lontaran langkah sekant awal dari $(3,-2)$.)
+
+  \item \textbf{Peran pembaruan arah pencarian Quasi-Newton dalam menjelaskan perbedaan iterasinya dengan CGM.}
+  Quasi-Newton mengakumulasi informasi kelengkungan lokal ke dalam matriks simetris definit positif $B_k\in\R^{2\times2}$
+  lewat syarat sekant $B_{k+1}\bs_k=\by_k$, kemudian memutar sekaligus menskalakan vektor gradien melalui
+  $\bd_k=-B_k^{-1}\bg_k$. Transformasi matriks penuh ini mengompensasi ketimpangan skala nilai eigen Hessian fungsi
+  Rosenbrock antara arah melintang dan membujur lembah, sehingga arah langkah langsung dibelokkan sejajar dasar lembah
+  dan menghasilkan konvergensi superlinear di dekat $\bx^*$ (memangkas iterasi Uji~1 dari 34 pada CGM PR+ menjadi 13).
+  Sebaliknya, CGM tidak menyimpan matriks kelengkungan dan hanya menambahkan kelipatan skalar $\beta_k\bd_k$ pada
+  $-\bg_{k+1}$ dengan asumsi kuadratik ber-Hessian konstan; ketika kelengkungan lembah terus berputar sepanjang iterasi,
+  sifat konjugasi cepat rusak sehingga butuh lebih banyak iterasi. Di sisi lain, ketergantungan pada matriks $B_k$ juga
+  menjelaskan mengapa pada Uji~2 Quasi-Newton memerlukan 40 iterasi: satu pembaruan sekant pertama di daerah nonkonveks
+  jauh dari lembah sempat menghasilkan hampiran kelengkungan yang melontarkan $\bx_2$ ke $(6.83,46.68)$, sebelum
+  pembaruan $B_k$ berikutnya menuntun iterasi menyusuri lembah secara teratur.
+
+  \item \textbf{Perilaku lintasan kedua algoritma saat mengikuti lembah sempit Rosenbrock.}
+  Sebagaimana ditunjukkan Gambar~\ref{fig:trajectory}, sesudah langkah pertama yang identik ke $(1.44,2.08)$, lintasan
+  \textbf{Quasi-Newton BFGS} tetap menempel rapat pada dasar lembah parabola $y=x^2$ dan merayap secara monoton menuju
+  $(1,1)$ dalam langkah-langkah terarah tanpa pernah keluar dari cekungan lembah. Sebaliknya, lintasan \textbf{CGM PR+}
+  berulang kali mengalami \emph{overshoot} karena garis lurus pencarian langkah sepanjang arah konjugat memotong
+  lengkungan parabola, sehingga iterat terlempar bolak-balik melintasi cabang kiri dan kanan lembah (hingga sejauh
+  $(-3.35,11.25)$ dan $(2.30,5.31)$) disertai lonjakan berulang norma gradien saat menyentuh dinding curam lembah,
+  sebelum akhirnya terkonsentrasi di sekitar $(1,1)$.
+\end{enumerate}
 
 \section{Kesimpulan}
-% TODO: 1--2 paragraf.
+Implementasi dan pengujian mandiri metode CGM serta Quasi-Newton pada fungsi Rosenbrock menunjukkan bahwa pemilihan
+metode pencarian langkah dan mekanisme pembaruan arah sangat menentukan kinerja optimisasi pada lanskap berlembah sempit
+dan melengkung. Pencarian langkah mendekati eksak menggunakan \emph{binary search} pada turunan arah terbukti jauh lebih
+unggul daripada \emph{Armijo backtracking}, memangkas jumlah iterasi hingga 32 kali lipat dan total evaluasi fungsi
+serta gradien hingga 17 kali lipat pada CGM PR+, sekaligus menjamin terpenuhinya syarat kelengkungan positif bagi
+pembaruan matriks Quasi-Newton di seluruh pengujian. Di dalam keluarga masing-masing, varian Polak--Ribi\`ere+ (PR+)
+secara konsisten mengungguli Fletcher--Reeves (FR) berkat kemampuan pemotongan nol yang mencegah kemacetan arah lama
+(menghemat 33 berbanding 1401 iterasi pada Uji~2), sedangkan varian BFGS secara konsisten mengungguli DFP dalam
+pengkondisian matriks hampiran Hessian dan penghematan evaluasi gradien meskipun jumlah iterasi keduanya sama di bawah
+pencarian langkah eksak.
+
+Perbandingan antar-algoritma menegaskan keunggulan struktural pembaruan matriks $B_k$ pada Quasi-Newton dibandingkan
+pembaruan skalar $\beta_k$ pada CGM saat menelusuri lembah sempit. Dengan memutar dan menskalakan gradien menurut
+invers hampiran Hessian $2\times2$, Quasi-Newton BFGS mampu mengikuti kelengkungan parabola $y=x^2$ secara mulus dan
+mencapai konvergensi superlinear (13 iterasi pada Uji~1 serta jarak akhir $3.79\times10^{-10}$ pada Uji~2), bebas dari
+osilasi lintas-cabang yang dialami CGM PR+. Namun, sensitivitas hampiran sekant awal dari titik yang jauh di daerah
+nonkonveks dapat membuat Quasi-Newton menempuh jalur memutar lebih panjang pada iterasi awal seperti pada Uji~2 (40
+berbanding 33 iterasi milik CGM PR+), sehingga Quasi-Newton BFGS merupakan pilihan terbaik ketika konvergensi lokal
+cepat dan pelacakan lembah yang stabil diutamakan, sementara CGM PR+ dengan \emph{binary search} menjadi alternatif
+tangguh berkebutuhan memori minimal.
 
 \renewcommand{\refname}{Referensi}
 \begin{thebibliography}{9}
-\bibitem{nocedal} J. Nocedal dan S. J. Wright, \emph{Numerical Optimization}, edisi ke-2. Springer, 2006, Bab 3 dan 5.
+\bibitem{nocedal} J. Nocedal dan S. J. Wright, \emph{Numerical Optimization}, edisi ke-2. Springer, 2006, Bab 3, 5, dan 6.
 \bibitem{armijo} L. Armijo, ``Minimization of functions having Lipschitz continuous first partial derivatives,'' \emph{Pacific Journal of Mathematics}, vol.~16, no.~1, hlm.~1--3, 1966.
 \bibitem{fr} R. Fletcher dan C. M. Reeves, ``Function minimization by conjugate gradients,'' \emph{The Computer Journal}, vol.~7, no.~2, hlm.~149--154, 1964.
 \bibitem{pr} E. Polak dan G. Ribi\`ere, ``Note sur la convergence de m\'ethodes de directions conjugu\'ees,'' \emph{Revue fran\c{c}aise d'informatique et de recherche op\'erationnelle}, vol.~3, no.~16, hlm.~35--43, 1969.
 \bibitem{gilbert} J. C. Gilbert dan J. Nocedal, ``Global convergence properties of conjugate gradient methods for optimization,'' \emph{SIAM Journal on Optimization}, vol.~2, no.~1, hlm.~21--42, 1992.
-% TODO: tambah referensi yang benar-benar dipakai (bukan slide kuliah).
+\bibitem{rosenbrock} H. H. Rosenbrock, ``An automatic method for finding the greatest or least value of a function,'' \emph{The Computer Journal}, vol.~3, no.~3, hlm.~175--184, 1960.
+\bibitem{bfgs} D. Goldfarb, ``A family of variable-metric methods derived by variational means,'' \emph{Mathematics of Computation}, vol.~24, no.~109, hlm.~23--26, 1970.
+\bibitem{fletcherpowell} R. Fletcher dan M. J. D. Powell, ``A rapidly convergent descent method for minimization,'' \emph{The Computer Journal}, vol.~6, no.~2, hlm.~163--168, 1963.
+\bibitem{dixon} L. C. W. Dixon, ``Quasi-Newton algorithms generate identical points,'' \emph{Mathematical Programming}, vol.~2, no.~1, hlm.~383--387, 1972.
 \end{thebibliography}
 
 \appendix
 \renewcommand{\thelstlisting}{A.\arabic{lstlisting}}
 \section{Lampiran}
 \subsection{Kode program}
-Kode~\ref{code:ls} dan Kode~\ref{code:cgm} adalah implementasi Python dari Kode~\ref{alg:binary},
-\ref{alg:armijo}, dan~\ref{alg:cgm}. Kelas \texttt{Problem} di \texttt{soal1/code/common.py} menghitung $f$ dan
-$\nabla f$ menurut \eqref{eq:grad} sekaligus mencatat jumlah evaluasinya.
+Kode~\ref{code:ls}, Kode~\ref{code:cgm}, dan Kode~\ref{code:qn} adalah implementasi Python dari prosedur pencarian
+langkah (Kode~\ref{alg:binary} dan~\ref{alg:armijo}), CGM nonlinear (Kode~\ref{alg:cgm}), serta Quasi-Newton
+(Kode~\ref{alg:qn}). Kelas \texttt{Problem} dan struktur keluaran \texttt{Result} didefinisikan di
+\texttt{soal1/code/common.py} untuk menghitung $f$ dan $\nabla f$ menurut \eqref{eq:grad} sekaligus mencatat jumlah
+evaluasinya secara terpisah, sedangkan seluruh tabel dan grafik pada laporan ini dibangkitkan otomatis oleh skrip
+\texttt{soal1/code/exp\_linesearch.py} dan \texttt{soal1/code/run\_experiments.py}.
 \lstinputlisting[caption={Pencarian langkah (\texttt{soal1/code/linesearch.py}).},label={code:ls}]{../code/linesearch.py}
 \lstinputlisting[caption={CGM FR dan PR+ (\texttt{soal1/code/cgm.py}).},label={code:cgm}]{../code/cgm.py}
+\lstinputlisting[caption={Quasi-Newton BFGS dan DFP (\texttt{soal1/code/quasi\_newton.py}).},label={code:qn}]{../code/quasi_newton.py}
 \end{document}
